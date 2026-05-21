@@ -32,21 +32,29 @@ const fetchFromAPI = async () => {
 // Fetch tasks - checks localStorage first, then API on initial load
 export const fetchTasks = async () => {
   try {
-    // Check if tasks already exist in localStorage (from previous session or additions)
-    const savedTasks = localStorage.getItem(STORAGE_KEY);
-    if (savedTasks) {
-      return JSON.parse(savedTasks);
+    // Determine if an initial API fetch has already been performed
+    const initialFetched = localStorage.getItem(INITIAL_FETCH_KEY) === 'true';
+
+    // If we've already done the initial fetch and there are saved tasks, return them
+    const savedTasksRaw = localStorage.getItem(STORAGE_KEY);
+    if (initialFetched && savedTasksRaw) {
+      try {
+        return JSON.parse(savedTasksRaw);
+      } catch (e) {
+        // If parsing fails, fall through to fetch from API
+        console.warn('Failed to parse saved tasks, refetching from API.', e);
+      }
     }
-    
-    // If no cached tasks, fetch from API (initial load)
+
+    // Otherwise fetch from API (initial load or recovery)
     const apiTasks = await fetchFromAPI();
-    
+
     // Save to localStorage for future use
     saveTasks(apiTasks);
-    
+
     // Mark that initial fetch has been done
     localStorage.setItem(INITIAL_FETCH_KEY, 'true');
-    
+
     return apiTasks;
   } catch (error) {
     // If API fails and no cache, throw error

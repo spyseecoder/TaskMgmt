@@ -13,7 +13,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 const Home = () => {
   const { user } = useContext(UserContext);
-  const { tasks, loading, setAllTasks, updateTask, deleteTask, setTaskLoading, setTaskError } = useContext(TaskContext);
+  const { tasks, loading, error, setAllTasks, updateTask, deleteTask, setTaskLoading, setTaskError } = useContext(TaskContext);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
@@ -31,6 +31,7 @@ const Home = () => {
           setTaskError(null);
         } catch (error) {
           setTaskError(error.message);
+          console.error('Failed to load tasks:', error);
         } finally {
           setTaskLoading(false);
         }
@@ -38,7 +39,23 @@ const Home = () => {
     };
 
     loadTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Manual retry when fetch fails
+  const handleRetry = async () => {
+    setTaskLoading(true);
+    try {
+      const tasksData = await fetchTasks();
+      setAllTasks(tasksData);
+      setTaskError(null);
+    } catch (err) {
+      setTaskError(err.message);
+      console.error('Retry failed:', err);
+    } finally {
+      setTaskLoading(false);
+    }
+  };
 
   // Filter and search tasks
   useEffect(() => {
@@ -129,6 +146,12 @@ const Home = () => {
 
         {/* Tasks Section */}
         <section className="tasks-section">
+          {error && (
+            <div className="error-banner">
+              <p>Failed to load tasks: {error}</p>
+              <button className="btn-retry" onClick={handleRetry}>Retry</button>
+            </div>
+          )}
           {loading ? (
             <LoadingSpinner />
           ) : filteredTasks.length > 0 ? (
